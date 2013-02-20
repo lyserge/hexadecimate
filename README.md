@@ -8,7 +8,7 @@ Requirements
 ------------
 
 Python 2.7
-
+NLTK (with nltk.download('maxent_treebank_pos_tagger') and 'stopwords')
 
 License
 -------
