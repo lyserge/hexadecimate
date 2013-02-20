@@ -18,6 +18,7 @@ parser.add_argument('-u', '--url', help='a URL to parse')
 parser.add_argument('--random', type=int, help='produce a list of random words (default 100 words)')
 parser.add_argument('-r', '--rate', help='sample rate (default 16)', default=16, type=int)
 parser.add_argument('-s', '--start', help='starting word index (default 0)', default=0, type=int)
+parser.add_argument('-l', '--limit', help='limit to a given number of words', type=int)
 parser.add_argument('--ignore-stopwords', action='store_true', default=False, help='ignore common words, e.g. in, or, but')
 parser.add_argument('--ignore-proper', action='store_true', default=False, help='ignore proper nouns, i.e. those that begin with a capital letter')
 #parser.add_argument('-m', '--mutate', action='store_true', default=False, help='mutate words')
@@ -63,9 +64,16 @@ if (not args.random) and (args.ignore_proper or args.ignore_stopwords):
 if not args.random:
 	source = source.translate(string.maketrans("",""), '!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~')
 	words = source.split()
-	hexadecimated = [words[i] for i in xrange(args.start, len(words), args.rate)]
+	
 	if args.scramble:
-		random.shuffle(hexadecimated)
+		random.shuffle(words)
+	
+	if args.limit:
+		limit = args.limit*args.rate
+	else:
+		limit = len(words)
+		
+	hexadecimated = [words[i] for i in xrange(args.start, limit, args.rate)]
 else:
 	hexadecimated = words[:args.random]
 
