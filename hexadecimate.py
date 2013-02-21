@@ -3,10 +3,28 @@ import sys
 import urllib2
 import random
 import string
-import nltk
-from nltk.corpus import stopwords
-from nltk.corpus import wordnet
-import html2text
+import HTMLParser
+import numbers
+
+try:
+	import nltk
+except ImportError:
+	print "The NLTK library is required. Try running 'pip install nltk'."
+	sys.exit(1)
+
+def isnum(word):
+	try:
+		i = float(word)
+		#print "'%s' is a number" % word
+		return True	
+	except ValueError, TypeError:
+		#print "'%s' is not a number" % word
+		return False
+	
+#try:
+#	from nltk.corpus import wordnet
+#except ImportError:
+#	print "The NLTK wordnet corpus is required for xxx. Try running 'python -m nltk.downloader wordnet'."
 
 parser = argparse.ArgumentParser(description='Text processing library for writers')
 
@@ -31,12 +49,20 @@ source = ""
 if args.file:
 	source = args.file.read()
 elif args.url:
-	response = urllib2.urlopen(args.url)
+	headers = {'User-Agent' : "Hexadecimate"}
+	req = urllib2.Request(args.url, None, headers)
+	response = urllib2.urlopen(req)
+
 	mime = response.info()['Content-Type']
 	if ('text/plain' in mime):
 		source = response.read()
+	elif ('text/html' in mime):
+		h = HTMLParser.HTMLParser()
+		document = response.read().decode('ascii','ignore')
+		document = h.unescape(document)
+		source = nltk.clean_html(document).encode('utf8')
 	else:
-		print "URL must be for a plain text document"
+		print "URL must be for an HTML or plain text document"
 		sys.exit(1)
 elif args.random:
 	words = [line.strip() for line in open('words.txt')]
@@ -52,18 +78,33 @@ else:
 	sys.exit(1)
 
 if (not args.random) and (args.ignore_proper or args.ignore_stopwords):
-	text = nltk.word_tokenize(source)
-	tagged = nltk.pos_tag(text)
+	try:
+		text = nltk.word_tokenize(source)
+		tagged = nltk.pos_tag(text)
+	except ImportError:
+		print "The numpy library is required for ignoring proper nouns. Try running 'pip install numpy'."
+		sys.exit(1)
+	except LookupError:
+		print "You need an NLTK word tokenizer installed for ignoring proper nouns. Try running 'python -m nltk.downloader maxent_treebank_pos_tagger'."
+		sys.exit(1)
+
 	if args.ignore_proper:
 		tagged = [tag for tag in tagged if (tag[1]!='NNP' and tag[0] not in ["'s", "n't", "'m", "'ll", "'d"])]
-	if args.ignore_stopwords:
-		tagged = [tag for tag in tagged if tag[0] not in stopwords.words('english')]
-	
+
 	source = ' '.join([tag[0] for tag in tagged])	
 
 if not args.random:
 	source = source.translate(string.maketrans("",""), '!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~')
 	words = source.split()
+	words = [word for word in words if not isnum(word)]
+
+	if args.ignore_stopwords:
+		try:
+			from nltk.corpus import stopwords
+			words = [word for word in words if word not in stopwords.words('english')]
+		except LookupError:
+			print "The NLTK stopwords corpus is required for ignoring stopwords. Try running 'python -m nltk.downloader stopwords'."
+			sys.exit(1)
 	
 	if args.scramble:
 		random.shuffle(words)
